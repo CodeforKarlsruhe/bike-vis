@@ -132,7 +132,7 @@ var kaDistricts = {
 
 var districts = new GeoJsonLayer({
   id: 'districts',
-  data : kaDistricts,
+  data : [],
   pickable: true,
   stroked: false,
   filled: true,
@@ -151,19 +151,21 @@ async function mkDistricts(data) {
   const districts = new GeoJsonLayer({
     id: 'CityLayer',
     data : data,
-    pickable: true,
-    stroked: false,
-    filled: true,
-    extruded: true,
+    pickable: false, // true,
+    stroked: true, // show line around polygon if true
+    filled: true, // fill polygon
+    extruded: false, // true,
     pointType: 'circle',
     lineWidthScale: 20,
     lineWidthMinPixels: 2,
-    getFillColor: [10,10,10,100],
-    getLineColor: [200,0,0,100], // d => colorToRGBArray(d.properties.color),
+    getFillColor: d => {
+      //console.log("Color:",d.properties.color)
+      return d.properties.color
+    }, // [10,10,10,50],
+    getLineColor: [80,80,80], //],100], // d => colorToRGBArray(d.properties.color),
     getPointRadius: 100,
-    getLineWidth: 5,
+    getLineWidth: 2,
     getElevation: 30,
-    opacity: 0.2,
   });
   return districts  
 }
@@ -352,13 +354,36 @@ async function loadLanes() {
   }
 }
 
+// color helper
+function hexToRGB(hex, alpha) {
+  var r = parseInt(hex.slice(1, 3), 16),
+      g = parseInt(hex.slice(3, 5), 16),
+      b = parseInt(hex.slice(5, 7), 16);
+
+  if (alpha) {
+      return [r,g,b,parseInt(alpha)]
+  } else {
+      return [r,g,b]
+  }
+}
+
+
 async function loadCity() {
+  // 9 colors:
+  // https://colorbrewer2.org/?type=qualitative&scheme=Pastel1&n=9
+  //const cols = ['#fbb4ae','#b3cde3','#ccebc5','#decbe4','#fed9a6','#ffffcc','#e5d8bd','#fddaec','#f2f2f2']
+  const cols = ['#a6cee3','#1f78b4','#b2df8a','#33a02c','#fb9a99','#e31a1c','#fdbf6f','#ff7f00','#cab2d6']
   try {
     const response = await fetch("/data/ka.geojson")
     console.log("Fetch2 status", response.status)
     if (!response.ok) throw (new Error ("Fetch city failed"))
-    const data = await response.json()
-    kaDistricts = data
+    kaDistricts = await response.json()
+    kaDistricts.features.forEach((f,i) => {
+      //console.log(f.properties.name,i)
+      kaDistricts.features[i].properties.color = hexToRGB(cols[i % cols.length],((i+5)/cols.length)*20)
+      //console.log(f.properties.color)
+    })
+
     //districts = await mkDistricts(data)
     await loadLanes()
   } catch (e) {

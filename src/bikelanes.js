@@ -37,6 +37,7 @@ import { PolygonLayer } from '@deck.gl/layers';
 import { BitmapLayer } from '@deck.gl/layers';
 import { TileLayer } from '@deck.gl/geo-layers';
 import { TextLayer } from '@deck.gl/layers';
+import { GeoJsonLayer } from '@deck.gl/layers';
 
 import { MapView } from '@deck.gl/core';
 
@@ -98,6 +99,74 @@ const tiles = new TileLayer({
     });
   }
 });
+
+var kaDistricts = {
+  "type":"FeatureCollection",
+  "features":[
+    {
+      "type":"Feature",
+      "properties":{
+        "Stadtteilnummer":24,
+        "name":"Gruenwettersbach"
+      },
+      "geometry":{
+        "type":"Polygon",
+        "coordinates":[
+          [
+            [8.462117977546761,48.96734486425342],
+            [8.462746381549259,48.96691292074247],
+            [8.46297316113151,48.96700856796365],
+            [8.463574455685585,48.96726216936275],
+            [8.463877989004013,48.96739018587112],
+            [8.464317849897355,48.96757569557222],
+            [8.465483061813076,48.96825639613044],
+            [8.46157983718158,48.96756208620175],
+            [8.461932511421717,48.96743470287827],
+            [8.462117977546761,48.96734486425342]            
+          ]
+        ]
+      }
+    }
+  ]
+}
+
+var districts = new GeoJsonLayer({
+  id: 'districts',
+  data : kaDistricts,
+  pickable: true,
+  stroked: false,
+  filled: true,
+  extruded: true,
+  pointType: 'circle',
+  lineWidthScale: 20,
+  lineWidthMinPixels: 2,
+  getFillColor: [10,10,10,10],
+  getLineColor: [200,0,0], // d => colorToRGBArray(d.properties.color),
+  getPointRadius: 100,
+  getLineWidth: 5,
+  getElevation: 30
+});
+
+async function mkDistricts(data) {
+  const districts = new GeoJsonLayer({
+    id: 'CityLayer',
+    data : data,
+    pickable: true,
+    stroked: false,
+    filled: true,
+    extruded: true,
+    pointType: 'circle',
+    lineWidthScale: 20,
+    lineWidthMinPixels: 2,
+    getFillColor: [10,10,10,100],
+    getLineColor: [200,0,0,100], // d => colorToRGBArray(d.properties.color),
+    getPointRadius: 100,
+    getLineWidth: 5,
+    getElevation: 30,
+    opacity: 0.2,
+  });
+  return districts  
+}
 
 async function mkLabel(lbl = "Jahr ...") {
   const labels = new TextLayer({
@@ -179,6 +248,9 @@ function layerFilter({ layer, viewport }) {
   if (viewport.id === 'label' && layer.id === 'TileLayer') {
     return false;
   }
+  if (viewport.id === 'label' && layer.id === 'CityLayer') {
+    return false;
+  }
   if (viewport.id === 'map' && layer.id === 'TextLayer') {
     return false;
   }
@@ -248,8 +320,9 @@ async function animate() {
     // time is in weeks, first year is 2012
     const year = Math.floor(startYear + tm / 52)
     const labels = await mkLabel(year)
+    const districts = await mkDistricts(kaDistricts)
     //deckgl.setProps({layers: [tiles, trips, scatter, bmap, bg]});
-    await deckgl.setProps({ layers: [tiles, trips, labels] });
+    await deckgl.setProps({ layers: [tiles, trips, labels, districts] });
     setTimeout(animate, 100)
   } else {
     console.log("Finished")
@@ -260,6 +333,43 @@ async function animate() {
 
 
 // load data 
+async function loadLanes() {
+  try {
+    const response = await fetch("/data/lanes.json")
+    console.log("Fetch1 status", response.status)
+    if (!response.ok) throw (new Error ("Fetch lanes failed"))
+    const data = await response.json()
+    tripData = data
+    startYear = data[0].year
+    startWeek = data[0].week
+    stopYear = data[data.length - 1].year
+    console.log("Start/stop:", startYear, stopYear)
+    const evt = new Event('input', { bubbles: true })
+    document.getElementById("sets").dispatchEvent(evt) // set initial speed
+    setTimeout(animate, 1000) // start animation
+  } catch (e) {
+    alert("Fetch1 failed: ", e.message)
+  }
+}
+
+async function loadCity() {
+  try {
+    const response = await fetch("/data/ka.geojson")
+    console.log("Fetch2 status", response.status)
+    if (!response.ok) throw (new Error ("Fetch city failed"))
+    const data = await response.json()
+    kaDistricts = data
+    //districts = await mkDistricts(data)
+    await loadLanes()
+  } catch (e) {
+    alert("Fetch1 failed: ", e.message)
+  }
+}
+
+
+loadCity()
+
+/*
 fetch("/data/lanes.json")
   .then((response) => {
     if (!response.ok) {
@@ -283,5 +393,24 @@ fetch("/data/lanes.json")
   }
   )
 
-//setTimeout(animate,1000)
+// load data 
+fetch("/data/ka.geojson")
+  .then((response) => {
+    if (!response.ok) {
+      alert("Fetch2 failed: ", response.status)
+      throw (new Error("HTTP error!"))
+    }
+    console.log("Fetch2 status", response.status)
+    return response.json()
+    }
+  )
+  .then((data) => {
+    //console.log("Fetch data",data)
+    kaDistricts = data
+    districtsLoaded = true
+    }
+  )
 
+*/
+
+//setTimeout(animate,1000)

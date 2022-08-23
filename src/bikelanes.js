@@ -165,7 +165,7 @@ async function mkDistricts(data) {
     getLineColor: [80,80,80], //],100], // d => colorToRGBArray(d.properties.color),
     getPointRadius: 100,
     getLineWidth: 2,
-    getElevation: 30,
+    getElevation: d => 10 * d.properties.height, //30,
   });
   return districts  
 }
@@ -267,7 +267,7 @@ const deckgl = new Deck({
   width: "1280px",
   height: "720px",
   initialViewState: INITIAL_VIEW_STATE,
-  controller: { dragRotate: false }, //true,
+  //controller: true, // { dragRotate: false }, //true,
   layerFilter: layerFilter,
   layers: [tiles],
   views: [
@@ -380,7 +380,8 @@ async function loadCity() {
     kaDistricts = await response.json()
     kaDistricts.features.forEach((f,i) => {
       //console.log(f.properties.name,i)
-      kaDistricts.features[i].properties.color = hexToRGB(cols[i % cols.length],((i+5)/cols.length)*20)
+      kaDistricts.features[i].properties.color = hexToRGB(cols[i % cols.length],((i+5)/cols.length)*30)
+      kaDistricts.features[i].properties.height = 10 + Math.floor(Math.random() * 100)
       //console.log(f.properties.color)
     })
 
